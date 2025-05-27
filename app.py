@@ -1,10 +1,12 @@
-from flask import Flask, request, jsonify, render_template
-from src.helper import load_pdf_file, text_split, download_hugging_face_embeddings, load_llm, set_custom_prompt
-from src.prompt import CUSTOM_PROMPT_TEMPLATE
-from pinecone.grpc import PineconeGRPC as Pinecone
+from flask import Flask, render_template, jsonify, request
+from src.helper import download_hugging_face_embeddings
 from langchain_pinecone import PineconeVectorStore
-from langchain.chains import RetrievalQA
+from langchain_openai import OpenAI
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
+from src.prompt import *
 import os
 
 
@@ -15,28 +17,34 @@ load_dotenv()
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 HF_TOKEN = os.getenv("HF_TOKEN")
-index_name = "test"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+index_name = "swahili-test"
 embeddings = download_hugging_face_embeddings()
-HUGGINGFACE_REPO_ID="mistralai/Mistral-7B-Instruct-v0.3"
+
 
 docsearch = PineconeVectorStore.from_existing_index(
     index_name=index_name,
     embedding=embeddings
 )
 
-# Create QA chain
-qa_chain=RetrievalQA.from_chain_type(
-    llm=load_llm(HUGGINGFACE_REPO_ID),
-    chain_type="stuff",
-    retriever=docsearch.as_retriever(search_kwargs={'k':3}),
-    return_source_documents=True,
-    chain_type_kwargs={'prompt':set_custom_prompt(CUSTOM_PROMPT_TEMPLATE)}
+retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k":3})
+
+
+llm = OpenAI(temperature=0.4, max_tokens=500)
+prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", system_prompt),
+        ("human", "{input}"),
+    ]
 )
+
+question_answer_chain = create_stuff_documents_chain(llm, prompt)
+rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+
 
 @app.route("/")
 def index():
     return render_template('chat.html')
-
 
 
 @app.route("/get", methods=["GET", "POST"])
@@ -44,9 +52,10 @@ def chat():
     msg = request.form["msg"]
     input = msg
     print(input)
-    result=qa_chain({"query": input})
-    print("Response : ", result["result"])
-    return str(result["result"])
+    response = rag_chain.invoke({"input": msg})
+    print("Response : ", response["answer"])
+    return str(response["answer"])
+
 
 
 

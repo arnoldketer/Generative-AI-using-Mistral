@@ -16,7 +16,8 @@ list_of_files = [
    " test.py",
    "store_index.py",
    "templates/chat.html",
-   "static/style.css"
+   "static/style.css",
+   "evaluation/notebook.ipynb",
 ]
 
 

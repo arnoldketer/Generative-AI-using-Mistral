@@ -26,7 +26,7 @@ def text_split(extracted_data):
     return text_chunks
 
 def download_hugging_face_embeddings():
-    embeddings=HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
+    embeddings=HuggingFaceEmbeddings(model_name='sartifyllc/MultiLinguSwahili-bge-small-en-v1.5-nli-matryoshka')
     return embeddings
 
 def load_llm(huggingface_repo_id):

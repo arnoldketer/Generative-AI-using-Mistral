@@ -1,3 +1,8 @@
 .env
 data
+data_evaluation
 Generative_AI_Project.egg-info
+my_testset.jsonl
+my_testset2.jsonl
+report.html
+report2.html
